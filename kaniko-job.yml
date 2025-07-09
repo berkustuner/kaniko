@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kaniko-builder
+spec:
+  containers:
+    - name: kaniko
+      image: gcr.io/kaniko-project/executor:latest
+      args:
+        - "--dockerfile=Dockerfile"
+        - "--context=dir://workspace"
+        - "--destination=10.10.8.13/demo/deneme-image:latest"
+        - "--insecure"
+        - "--skip-tls-verify"
+      volumeMounts:
+        - name: build-context
+          mountPath: /workspace
+        - name: docker-config
+          mountPath: /kaniko/.docker/
+  restartPolicy: Never
+  volumes:
+    - name: build-context
+      hostPath:
+        path: /home/ubuntu/app-dir
+        type: Directory
+    - name: docker-config
+      secret:
+        secretName: harbor-registry-secret
+
