@@ -12,7 +12,8 @@ class Todo(db.Model):
 
 @app.before_first_request
 def create_tables():
-    db.create_all()
+    with app.app_context():
+        db.create_all()
 
 @app.route("/", methods=["GET"])
 def ping():
@@ -20,7 +21,7 @@ def ping():
 
 @app.route("/todos", methods=["GET"])
 def list_todos():
-    todos = Todo.query.all()
+    todos = Todo.query.all()  # hâlâ çalışıyor
     return jsonify([{"id": t.id, "task": t.task} for t in todos]), 200
 
 @app.route("/todos", methods=["POST"])

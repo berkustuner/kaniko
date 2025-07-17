@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  kaniko:
+    image: gcr.io/kaniko-project/executor:latest
+    command:
+      - "--dockerfile=/workspace/Dockerfile"
+      - "--context=dir:///workspace/"
+      - "--destination=10.10.8.13/demo/deneme-image:latest"
+      - "--insecure"
+      - "--skip-tls-verify"
+      - "--single-snapshot"
+      - "--verbosity=debug"
+    volumes:
+      - /home/ubuntu/kaniko-example:/workspace
+      - /home/ubuntu/.docker:/kaniko/.docker:ro
+      
+
