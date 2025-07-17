@@ -20,7 +20,7 @@ pipeline {
                     def workspaceDir = env.WORKSPACE
                     sh """
                         docker run --rm --network host \
-                          -v ${workspaceDir}:/workspace \
+                          -v /var/jenkins_home/workspace/kaniko-build:/workspace \
                           -v /var/jenkins_home/.docker/config.json:/kaniko/.docker/config.json \
                           gcr.io/kaniko-project/executor:latest \
                           --dockerfile=/workspace/Dockerfile \
