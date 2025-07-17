@@ -17,10 +17,10 @@ pipeline {
         stage('Build with Kaniko') {
             steps {
                 script {
-                    def workspace = pwd()  // En güvenli yoldur
+                    def workspaceDir = "/opt/jenkins_home/workspace/kaniko-build"
                     sh """
                         docker run --rm --network host \
-                          -v ${workspace}:/workspace \
+                          -v ${workspaceoDir}:/workspace \
                           -v \$HOME/.docker:/kaniko/.docker \
                           gcr.io/kaniko-project/executor:latest \
                           --dockerfile=/workspace/Dockerfile \
