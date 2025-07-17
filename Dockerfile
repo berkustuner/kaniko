@@ -4,10 +4,10 @@ WORKDIR /app
 
 COPY requirements.txt .
 
-RUN pip uninstall -y flask_sqlalchemy && \
-    pip install --no-cache-dir Flask-SQLAlchemy==3.1.1
+RUN pip install --upgrade pip \
+ && pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
+CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app"]
 
