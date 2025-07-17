@@ -4,20 +4,19 @@ pipeline {
     environment {
         IMAGE_NAME = "10.10.8.13/demo/deneme-image"
         TAG = "latest"
-        DOCKER_CONFIG = "/kaniko/.docker"
     }
 
     stages {
-        stage('Checkout') {
+        stage('Prepare Code') {
             steps {
-                git branch: "main", url: 'https://github.com/berkustuner/kaniko.git'
+                sh 'cp -r /var/jenkins_home/kaniko-code/* .'
             }
         }
 
         stage('Confirm Files') {
             steps {
-                sh "ls -la ${env.WORKSPACE}"
-                sh "cat ${env.WORKSPACE}/Dockerfile"
+                sh "ls -la"
+                sh "cat Dockerfile"
             }
         }
 
@@ -25,8 +24,7 @@ pipeline {
             steps {
                 sh """
                     docker run --rm --network host \
-                      -v ${env.WORKSPACE}:/workspace \
-                      -v /var/jenkins_home/.docker/config.json:/kaniko/.docker/config.json \
+                      -v \$(pwd):/workspace \
                       gcr.io/kaniko-project/executor:latest \
                       --dockerfile=Dockerfile \
                       --context=dir:///workspace \
