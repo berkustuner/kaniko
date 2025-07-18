@@ -13,7 +13,7 @@ pipeline {
                     sh """
                         docker run --rm --network host \
                           -v \$(pwd):/workspace \
-                          -v /home/ubuntu/.docker:/kaniko/.docker \
+                          -v /var/jenkins_home/.docker:/kaniko/.docker \
                           gcr.io/kaniko-project/executor:latest \
                           --dockerfile=/workspace/Dockerfile \
                           --context=dir:///workspace \
