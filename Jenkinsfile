@@ -7,25 +7,20 @@ pipeline {
     }
 
     stages {
-        stage('Confirm Files') {
-            steps {
-                sh 'ls -la'
-                sh 'cat Dockerfile'
-            }
-        }
-
         stage('Build with Kaniko') {
             steps {
-                sh """
-                    docker run --rm --network host \
-                      -v /var/jenkins_home/workspace/kaniko-build:/workspace \
-                      -v /var/jenkins_home/.docker:/kaniko/.docker \
-                      gcr.io/kaniko-project/executor:latest \
-                      --dockerfile=Dockerfile \
-                      --context=dir:///workspace \
-                      --destination=${IMAGE_NAME}:${TAG} \
-                      --insecure --insecure-pull --skip-tls-verify
-                """
+                dir("/home/ubuntu/kaniko-example") {
+                    sh """
+                        docker run --rm --network host \
+                          -v \$(pwd):/workspace \
+                          -v /home/ubuntu/.docker:/kaniko/.docker \
+                          gcr.io/kaniko-project/executor:latest \
+                          --dockerfile=/workspace/Dockerfile \
+                          --context=dir:///workspace \
+                          --destination=${IMAGE_NAME}:${TAG} \
+                          --insecure --insecure-pull --skip-tls-verify
+                    """
+                }
             }
         }
 
