@@ -9,7 +9,7 @@ pipeline {
     stages {
         stage('Build with Kaniko') {
             steps {
-                dir("/home/ubuntu/kaniko-example") {
+                dir("${env.WORKSPACE}") {
                     sh """
                         docker run --rm --network host \
                           -v \$(pwd):/workspace \
