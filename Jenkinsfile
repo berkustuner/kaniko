@@ -21,7 +21,7 @@ pipeline {
                       -v \$WORKSPACE:/workspace \
                       -v /var/jenkins_home/.docker:/kaniko/.docker \
                       gcr.io/kaniko-project/executor:latest \
-                      --dockerfile=Dockerfile \
+                      --dockerfile=/workspace/Dockerfile \
                       --context=dir:///workspace \
                       --destination=${IMAGE_NAME}:${TAG} \
                       --insecure --insecure-pull --skip-tls-verify
