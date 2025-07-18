@@ -7,16 +7,10 @@ pipeline {
     }
 
     stages {
-        stage('Prepare Code') {
-            steps {
-                sh 'cp -r /var/jenkins_home/kaniko-code/* .'
-            }
-        }
-
         stage('Confirm Files') {
             steps {
-                sh "ls -la"
-                sh "cat Dockerfile"
+                sh 'ls -la'
+                sh 'cat Dockerfile'
             }
         }
 
@@ -24,11 +18,11 @@ pipeline {
             steps {
                 sh """
                     docker run --rm --network host \
-                      -v \$(pwd):/workspace \
+                      -v \$WORKSPACE:/workspace \
                       gcr.io/kaniko-project/executor:latest \
-                      --dockerfile=Dockerfile \
+                      --dockerfile=/workspace/Dockerfile \
                       --context=dir:///workspace \
-                      --destination=${env.IMAGE_NAME}:${env.TAG} \
+                      --destination=${IMAGE_NAME}:${TAG} \
                       --insecure --insecure-pull --skip-tls-verify
                 """
             }
@@ -37,9 +31,9 @@ pipeline {
         stage('Deploy to Swarm') {
             steps {
                 sh """
-                    docker service update --image ${env.IMAGE_NAME}:${env.TAG} app_stack_web || \
+                    docker service update --image ${IMAGE_NAME}:${TAG} app_stack_web || \
                     docker service create --name app_stack_web --replicas 2 --publish 5000:5000 \
-                        --network app_net ${env.IMAGE_NAME}:${env.TAG}
+                        --network app_net ${IMAGE_NAME}:${TAG}
                 """
             }
         }
