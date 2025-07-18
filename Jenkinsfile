@@ -18,8 +18,8 @@ pipeline {
             steps {
                 sh """
                     docker run --rm --network host \
-                      -v ~/kaniko-example:/workspace \
-                      -v ~/.docker:/kaniko/.docker \
+                      -v /var/jenkins_home/workspace/kaniko-build:/workspace \
+                      -v /var/jenkins_home/.docker:/kaniko/.docker \
                       gcr.io/kaniko-project/executor:latest \
                       --dockerfile=/workspace/Dockerfile \
                       --context=dir:///workspace \
