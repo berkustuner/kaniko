@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from config import Config
+from flask import render_template
+
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -9,6 +11,11 @@ db = SQLAlchemy(app)
 class Todo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     task = db.Column(db.String(200), nullable=False)
+
+@app.route("/ui")
+def ui():
+    return render_template("index.html")
+
 
 @app.before_first_request
 def create_tables():
