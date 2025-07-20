@@ -12,7 +12,7 @@ pipeline {
                 dir("${env.WORKSPACE}") {
                     sh """
                         docker run --rm --network host \
-                          -v \$(pwd):/workspace \
+                          -v /var/jenkins_home/workspace/kaniko-build:/workspace \
                           -v /var/jenkins_home/.docker:/kaniko/.docker \
                           gcr.io/kaniko-project/executor:latest \
                           --dockerfile=/workspace/Dockerfile \
