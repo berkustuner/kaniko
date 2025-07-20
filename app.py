@@ -12,7 +12,7 @@ class Todo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     task = db.Column(db.String(200), nullable=False)
 
-@app.route("/ui")
+@app.route("/ui", methods=["GET:"])
 def ui():
     return render_template("index.html")
 
