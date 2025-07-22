@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = "10.10.8.13/demo/deneme-image"
-        TAG = "latest"
+        TAG = "build-${BUILD_NUMBER}"
     }
 
     stages {
