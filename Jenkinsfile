@@ -27,7 +27,7 @@ pipeline {
         stage('Deploy to Swarm') {
             steps {
                 sh """
-                    docker service update --image ${IMAGE_NAME}:${TAG} app_stack_web || \
+                    docker service update --update-order stop-first --image ${IMAGE_NAME}:${TAG} app_stack_web || \
                     docker service create --name app_stack_web --replicas 2 --publish 5000:5000 \
                         --network app_net ${IMAGE_NAME}:${TAG}
                     docker service update --force --with-registry-auth \
