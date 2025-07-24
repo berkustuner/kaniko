@@ -23,22 +23,23 @@ pipeline {
                 }
             }
         }
+	stage('Deploy to Swarm') {
+	    steps {
+  		sh '''
+    		    set -e
+    		    TAG=build-${BUILD_NUMBER}-${GIT_COMMIT::7}
 
-        stage('Deploy to Swarm') {
-  sh '''
-    set -e
-    TAG=build-${BUILD_NUMBER}-${GIT_COMMIT::7}
-
-    # Roll-update – önce eski task’ı durdur, sonra yenisini başlat
-    docker service update \
-      --image 10.10.8.13/demo/deneme-image:${TAG} \
-      --update-parallelism 1 \
-      --update-order stop-first \
-      --with-registry-auth \
-      --force \
-      app_stack_web
-  '''
-}
+    		    # Roll-update – önce eski task’ı durdur, sonra yenisini başlat
+     		    docker service update \
+      		    --image 10.10.8.13/demo/deneme-image:${TAG} \
+      		    --update-parallelism 1 \
+      		    --update-order stop-first \
+      		    --with-registry-auth \
+      		    --force \
+      		    app_stack_web
+  		'''
+		}
+	      }
 
     }
 }
