@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = "10.10.8.13/demo/deneme-image"
-        TAG = "build-${BUILD_NUMBER}"
+        TAG        = "build-${BUILD_NUMBER}"
     }
 
     stages {
@@ -27,13 +27,17 @@ pipeline {
         stage('Deploy to Swarm') {
             steps {
                 sh """
-                    docker service update --force --with-registry-auth \
-                      --image ${IMAGE_NAME}:${TAG} app_stack_web || \
-                    docker service create --name app_stack_web --replicas 2 \
-                      --publish 5000:5000 --network app_net \
-                      --with-registry-auth ${IMAGE_NAME}:${TAG}
+                    if docker service ls --format '{{.Name}}' | grep -w app_stack_web > /dev/null; then
+                        docker service update --force --with-registry-auth \
+                          --image ${IMAGE_NAME}:${TAG} app_stack_web
+                    else
+                        docker service create --name app_stack_web --replicas 2 \
+                          --publish 5000:5000 --network app_net \
+                          --with-registry-auth ${IMAGE_NAME}:${TAG}
+                    fi
                 """
             }
         }
     }
 }
+
