@@ -25,18 +25,21 @@ pipeline {
         }
 
         stage('Deploy to Swarm') {
-            steps {
-                sh """
-                    docker service update --force --with-registry-auth \
-                      --image ${IMAGE_NAME}:${TAG} app_stack_web || \
-		      --update-parallelism 1 \
-		      --update-order stop-first \
-                    docker service create --name app_stack_web --replicas 2 \
-                      --publish 5000:5000 --network app_net \
-                      --with-registry-auth ${IMAGE_NAME}:${TAG}
-                """
-            }
-        }
+  sh '''
+    set -e
+    TAG=build-${BUILD_NUMBER}-${GIT_COMMIT::7}
+
+    # Roll-update – önce eski task’ı durdur, sonra yenisini başlat
+    docker service update \
+      --image 10.10.8.13/demo/deneme-image:${TAG} \
+      --update-parallelism 1 \
+      --update-order stop-first \
+      --with-registry-auth \
+      --force \
+      app_stack_web
+  '''
+}
+
     }
 }
 
