@@ -29,6 +29,8 @@ pipeline {
                 sh """
                     docker service update --force --with-registry-auth \
                       --image ${IMAGE_NAME}:${TAG} app_stack_web || \
+		      --update-parallelism 1 \
+		      --update-order stop-first \
                     docker service create --name app_stack_web --replicas 2 \
                       --publish 5000:5000 --network app_net \
                       --with-registry-auth ${IMAGE_NAME}:${TAG}
