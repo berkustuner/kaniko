@@ -1,51 +1,67 @@
-High-Available Todo Application
+High-Availability Todo Application
 
-1. Project Summary
+ 
 
-This repository contains a production-ready setup for a high-availability Todo application using Docker Swarm, HAProxy, Jenkins, Kaniko, and Harbor. The solution ensures zero-downtime deployments, automated database backups, and secure access controls via Cloudflare.
+Project Summary
 
-Key features:
+A production-ready, high-availability Todo application deployed on Docker Swarm with zero-downtime CI/CD. This setup leverages HAProxy for load balancing and failover, Jenkins with Kaniko for secure image builds, and Harbor as a private registry. Automated PostgreSQL backups and Cloudflare for DNS and access control ensure reliability and security.
 
-3-node Docker Swarm cluster (1 manager + 2 workers)
+Highlights:
 
-2-node HAProxy layer for load balancing and failover
+Docker Swarm Cluster: 3 nodes (1 manager, 2 workers) for container orchestration and service replication.
 
-Secure domain management through Cloudflare
+HAProxy Layer: 2 nodes providing load balancing and seamless failover.
 
-Automated PostgreSQL backups with retention policy
+Cloudflare Integration: DNS management and Zero Trust Access control restricted to kkaptanoglu@vmind.com.tr.
 
-CI/CD pipeline using Jenkins (non-root), Kaniko, and Harbor registry
+CI/CD Pipeline: Jenkins (non-root) triggers Kaniko builds and pushes images to Harbor, followed by rolling updates.
 
-Horizontal scaling and rolling updates via Docker Swarm
+Automated Backups: Nightly PostgreSQL dumps with retention policy.
 
-Access control for admin panel (/admin) restricted to kkaptanoglu@vmind.com.tr
+Scaling & HA: Service scaling via docker service scale and rolling updates to maintain uptime.
 
-2. Architecture Diagram
+Architecture Diagram
 
 
 
 Components:
 
-Cloudflare: DNS management, external access control (Zero Trust)
+Component
 
-VMind Net Balancer: Single entry point for all inbound traffic
+Purpose
 
-HAProxy nodes (node4 & node5): Internal load balancers with failover
+Cloudflare
 
-Docker Swarm cluster:
+DNS, external traffic protection, Access
 
-node1 (manager)
+VMind Net Balancer
 
-node2 (worker, database)
+Single entry point for inbound traffic
 
-node3 (worker, application)
+HAProxy (2 nodes)
 
-PostgreSQL: Internal-only, replicated via Docker Swarm
+Internal load balancer with failover
 
-Jenkins: CI/CD orchestrator (builds with Kaniko)
+Docker Swarm Cluster
 
-Kaniko: Container image builder without root
+Orchestrates app & DB services
 
-Harbor: Private container registry
+PostgreSQL
 
-Backups: Stored in host volume (/home/ubuntu/db_backups) with cron retention
+Internal DB, accessible only within Swarm
+
+Jenkins
+
+CI/CD orchestration (build & deploy)
+
+Kaniko
+
+Non-root Docker image builds
+
+Harbor
+
+Private Docker registry
+
+Backup Volume
+
+Stores nightly DB dumps
