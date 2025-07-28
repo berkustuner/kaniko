@@ -1,7 +1,3 @@
-High-Availability Todo Application
-
- 
-
 Project Summary
 
 A production-ready, high-availability Todo application deployed on Docker Swarm with zero-downtime CI/CD. This setup leverages HAProxy for load balancing and failover, Jenkins with Kaniko for secure image builds, and Harbor as a private registry. Automated PostgreSQL backups and Cloudflare for DNS and access control ensure reliability and security.
