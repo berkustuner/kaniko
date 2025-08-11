@@ -28,7 +28,7 @@ pipeline {
       steps {
         withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'REG_USER', passwordVariable: 'REG_PASS')]) {
           sh '''
-            set -euo pipefail
+            set -eu
             echo "$REG_PASS" | docker login "${REGISTRY}" -u "$REG_USER" --password-stdin
           '''
         }
@@ -38,7 +38,7 @@ pipeline {
     stage('Build & Push (Kaniko)') {
       steps {
         sh '''
-          set -euo pipefail
+          set -eu
           # host path kontrolleri
           docker run --rm -v "${CONTEXT_HOST_PATH}:/x:ro" alpine ls -la /x >/dev/null
           docker run --rm -v "${HOST_DOCKER_CONFIG}:/y:ro"  alpine ls -la /y >/dev/null
@@ -59,7 +59,7 @@ pipeline {
     stage('Deploy to Swarm') {
       steps {
 	sh '''
-      	  set -euo pipefail
+      	  set -eu
           docker network inspect app_net >/dev/null 2>&1 || docker network create --driver overlay app_net
 
       	  if docker service ls --format '{{.Name}}' | grep -w '^app_stack_web$' >/dev/null; then
