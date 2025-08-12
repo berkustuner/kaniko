@@ -7,6 +7,11 @@ COPY requirements.txt .
 RUN pip install --upgrade pip \
  && pip install --no-cache-dir -r requirements.txt
 
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
+
+
 COPY . .
 
 CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app"]
