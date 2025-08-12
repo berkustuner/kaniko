@@ -15,6 +15,9 @@ pipeline {
     IMAGE_REPO = "demo/deneme-image"
     IMAGE_NAME = "${REGISTRY}/${IMAGE_REPO}"
     TAG        = "build-${BUILD_NUMBER}"
+    SECRET_NAME = "pg_password"
+    SECRET_TARGET = "pg_password"     // container içindeki dosya adı
+    DB_PASS_FILE_PATH = "/run/secrets/pg_password"
   }
 
   options { timestamps() }
@@ -60,18 +63,40 @@ pipeline {
       steps {
         sh '''
           set -eu
+
+          # overlay ağ garanti
           docker network inspect app_net >/dev/null 2>&1 || docker network create --driver overlay app_net
 
           if docker service ls --format '{{.Name}}' | grep -w '^app_stack_web$' >/dev/null; then
-            docker service update \
+            # idempotent secret argümanları hazırla
+            if docker service inspect app_stack_web --format '{{json .Spec.TaskTemplate.ContainerSpec.Secrets}}' | grep -q '"SecretName":"'"${SECRET_NAME}"'"'; then
+              SECRET_ARGS="--secret-rm ${SECRET_TARGET} --secret-add source=${SECRET_NAME},target=${SECRET_TARGET}"
+            else
+              SECRET_ARGS="--secret-add source=${SECRET_NAME},target=${SECRET_TARGET}"
+            fi
+
+            # update
+            eval docker service update \
               --with-registry-auth \
               --update-order stop-first \
               --update-parallelism 1 \
               --image "${IMAGE_NAME}:${TAG}" \
               --publish-rm 5000 \
               --publish-add mode=host,target=5000,published=5000 \
+              --env-rm DB_PASS || true
+
+            # env + secret değişikliklerini ayrı bir update ile uygula (bazı daemon sürümlerinde daha stabil)
+            eval docker service update \
+              --with-registry-auth \
+              --env-add DB_HOST=db_stack_db \
+              --env-add DB_USER=postgres \
+              --env-add DB_NAME=postgres \
+              --env-add DB_PASS_FILE="${DB_PASS_FILE_PATH}" \
+              ${SECRET_ARGS} \
               app_stack_web
+
           else
+            # create
             docker service create --name app_stack_web --replicas 3 \
               --constraint 'node.labels.role_app==true' \
               --publish mode=host,target=5000,published=5000 \
@@ -80,7 +105,8 @@ pipeline {
               --env DB_HOST=db_stack_db \
               --env DB_USER=postgres \
               --env DB_NAME=postgres \
-              --env DB_PASS="${DB_PASS:-}" \
+              --env DB_PASS_FILE="${DB_PASS_FILE_PATH}" \
+              --secret source=${SECRET_NAME},target=${SECRET_TARGET} \
               "${IMAGE_NAME}:${TAG}"
           fi
         '''
