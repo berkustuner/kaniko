@@ -58,18 +58,24 @@ pipeline {
 
     stage('Deploy to Swarm') {
       steps {
-	sh '''
-      	  set -eu
+        sh '''
+          set -eu
           docker network inspect app_net >/dev/null 2>&1 || docker network create --driver overlay app_net
 
-      	  if docker service ls --format '{{.Name}}' | grep -w '^app_stack_web$' >/dev/null; then
-            docker service update --force --with-registry-auth \
-              --update-order stop-first --update-parallelism 1 \
-              --image "${IMAGE_NAME}:${TAG}" app_stack_web
+          if docker service ls --format '{{.Name}}' | grep -w '^app_stack_web$' >/dev/null; then
+            docker service update \
+              --with-registry-auth \
+              --update-order stop-first \
+              --update-parallelism 1 \
+              --image "${IMAGE_NAME}:${TAG}" \
+              --publish-rm 5000 \
+              --publish-add mode=host,target=5000,published=5000 \
+              app_stack_web
           else
             docker service create --name app_stack_web --replicas 3 \
               --constraint 'node.labels.role_app==true' \
-              --publish 5000:5000 --network app_net \
+              --publish mode=host,target=5000,published=5000 \
+              --network app_net \
               --with-registry-auth \
               --env DB_HOST=db_stack_db \
               --env DB_USER=postgres \
@@ -78,7 +84,7 @@ pipeline {
               "${IMAGE_NAME}:${TAG}"
           fi
         '''
-        }
+      }
     }
   }
 
