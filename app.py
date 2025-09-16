@@ -1,12 +1,14 @@
-from flask import Flask, request, jsonify
+# app.py
+from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required
 from config import Config
-from flask import render_template
-
 
 app = Flask(__name__)
 app.config.from_object(Config)
+
 db = SQLAlchemy(app)
+jwt = JWTManager(app)
 
 class Todo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -16,22 +18,33 @@ class Todo(db.Model):
 def ui():
     return render_template("index.html")
 
-
 @app.before_first_request
 def create_tables():
-    with app.app_context():
-        db.create_all()
+    db.create_all()
 
 @app.route("/", methods=["GET"])
 def ping():
     return jsonify({"message": "API OK"}), 200
 
+@app.route("/login", methods=["POST"])
+def login():
+    data = request.get_json() or {}
+    username = data.get("username")
+    password = data.get("password")
+
+    if username == app.config["APP_USER"] and password == app.config["APP_PASS"]:
+        token = create_access_token(identity=username)
+        return jsonify({"access_token": token}), 200
+    return jsonify({"error": "invalid credentials"}), 401
+
 @app.route("/todos", methods=["GET"])
+@jwt_required()
 def list_todos():
-    todos = Todo.query.all()  # hâlâ çalışıyor
+    todos = Todo.query.all()
     return jsonify([{"id": t.id, "task": t.task} for t in todos]), 200
 
 @app.route("/todos", methods=["POST"])
+@jwt_required()
 def add_todo():
     data = request.get_json() or {}
     if not data.get("task"):

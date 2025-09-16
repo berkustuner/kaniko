@@ -90,6 +90,12 @@ pipeline {
               --env-add DB_NAME=postgres \
               --env-add DB_PASS_FILE="${DB_PASS_FILE_PATH}" \
               ${SECRET_ARGS} \
+	      --secret-add source=jwt_secret,target=jwt_secret \
+	      --secret-add source=app_user,target=app_user \
+	      --secret-add source=app_pass,target=app_pass \
+	      --env-add JWT_SECRET_FILE=/run/secrets/jwt_secret \
+	      --env-add APP_USER_FILE=/run/secrets/app_user \
+	      --env-add APP_PASS_FILE=/run/secrets/app_pass \
               app_stack_web
 
           else
@@ -98,6 +104,12 @@ pipeline {
               --publish mode=host,target=5000,published=5000 \
               --network app_net \
               --with-registry-auth \
+	      --env JWT_SECRET_FILE=/run/secrets/jwt_secret \
+	      --secret source=jwt_secret,target=jwt_secret \
+	      --secret source=app_user,target=app_user \
+	      --secret source=app_pass,target=app_pass \
+	      --env APP_USER_FILE=/run/secrets/app_user \
+	      --env APP_PASS_FILE=/run/secrets/app_pass \
               --env DB_HOST=db_stack_db \
               --env DB_USER=postgres \
               --env DB_NAME=postgres \
