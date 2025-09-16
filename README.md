@@ -1,45 +1,44 @@
 # High-Availability Todo Application
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](#)
-[![License](https://img.shields.io/badge/license-MIT-blue)](#)
+![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
 ## Project Summary
+A production-ready, high-availability Todo application deployed on Docker Swarm with zero-downtime CI/CD.  
+The stack uses HAProxy for load balancing and fail-over, Jenkins + Kaniko for secure image builds, and Harbor as a private registry.  
+Automated PostgreSQL backups and Cloudflare DNS failover (via keepalived + notify_cf.sh) keep the platform reliable and secure.
 
-A production-ready, high-availability **Todo** application deployed on **Docker Swarm** with zero-downtime CI/CD.  
-The stack uses **HAProxy** for load balancing and fail-over, **Jenkins** + **Kaniko** for secure image builds, and **Harbor** as a private registry.  
-Automated **PostgreSQL** backups and **Cloudflare** for DNS & access control keep the platform reliable and secure.
+---
 
-### Highlights
-
+## Highlights
 - **Docker Swarm Cluster** – 3 nodes (1 manager, 2 workers) for orchestration and replication  
 - **HAProxy Layer** – 2 nodes providing load-balanced traffic and seamless fail-over  
-- **Cloudflare Zero Trust** – DNS + restricted `/admin` access (only `kkaptanoglu@vmind.com.tr`)  
+- **Cloudflare DNS Failover** – keepalived + `notify_cf.sh` dynamically updates Cloudflare A record with the current master node’s IP  
 - **CI/CD Pipeline** – Jenkins (non-root) triggers Kaniko builds, pushes to Harbor, then rolls out updates  
 - **Automated Backups** – Nightly PostgreSQL dumps with 7-day retention  
 - **Horizontal Scaling** – `docker service scale` + rolling updates keep services online  
 
+---
+
 ## Architecture Diagram
 
-
-
-| Component              | Purpose                                                     |
-| ---------------------- | ----------------------------------------------------------- |
-| **Cloudflare**         | DNS, WAF, Zero-Trust access                                 |
-| **VMind Net Balancer** | Single entry-point for inbound traffic                      |
-| **HAProxy (×2)**       | Internal load balancers with health-checks & fail-over      |
-| **Docker Swarm**       | Orchestrates app & DB containers                            |
-| **PostgreSQL**         | Internal database (no public exposure)                      |
-| **Jenkins**            | CI/CD orchestration                                         |
-| **Kaniko**             | Rootless container image builds                             |
-| **Harbor**             | Private container registry                                  |
-| **Backup Volume**      | Stores nightly database dumps                               |
+| Component     | Purpose                                   |
+|---------------|-------------------------------------------|
+| Cloudflare    | DNS, WAF, Zero-Trust access               |
+| Keepalived    | Virtual IP failover + notify_cf.sh hook   |
+| HAProxy (×2)  | Internal load balancers with health-checks|
+| Docker Swarm  | Orchestrates app & DB containers          |
+| PostgreSQL    | Internal database (no public exposure)    |
+| Jenkins       | CI/CD orchestration                       |
+| Kaniko        | Rootless container image builds           |
+| Harbor        | Private container registry                |
+| Backup Volume | Stores nightly database dumps             |
 
 ---
 
-
 ## Prerequisites
 
-> **Minimum lab**: 5 Ubuntu 22.04 LTS VMs on an isolated network (`10.10.8.0/24`).  
+> **Minimum lab**: 5 Ubuntu 22.04 LTS VMs on an isolated network.  
 > All ingress passes through **Cloudflare → VMind Net Balancer**. No public IPs are required.
 
 ### Hardware
