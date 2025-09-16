@@ -1,92 +1,275 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
-    <title>Todo App</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Todo App</title>
+  <style>
+    :root{
+      --bg:#0f1226;        /* koyu arka plan */
+      --card:#171a33;      /* kart rengi */
+      --muted:#8b90b3;     /* soluk metin */
+      --text:#e6e8ff;      /* ana metin */
+      --accent:#6d7cff;    /* buton vurgu */
+      --accent-2:#21d4fd;  /* gradient 2 */
+      --danger:#ff6868;
+      --ok:#28d17c;
+      --border:rgba(255,255,255,0.06);
+      --shadow: 0 10px 30px rgba(0,0,0,.35), 0 2px 8px rgba(0,0,0,.25);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background: radial-gradient(1200px 600px at 80% -10%, rgba(109,124,255,.25), transparent 60%),
+                            radial-gradient(900px 500px at -10% 10%, rgba(33,212,253,.18), transparent 60%),
+                            var(--bg);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      color:var(--text); display:grid; place-items:center; padding:24px;
+    }
+    .app{
+      width: min(920px, 96vw);
+      display:grid; grid-template-columns: 360px 1fr; gap:22px;
+    }
+    @media (max-width: 860px){ .app{ grid-template-columns: 1fr; } }
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+      border:1px solid var(--border);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding:22px;
+    }
+    .title{
+      margin:0 0 8px; font-size:24px; font-weight:800; letter-spacing:.2px;
+    }
+    .subtitle{margin:0 0 18px; color:var(--muted); font-size:13px}
+
+    .row{display:flex; gap:10px}
+    .input, .btn{
+      height:42px; border-radius:12px; border:1px solid var(--border); outline:none;
+      background:#0f1330; color:var(--text); padding:0 14px; font-size:14px;
+    }
+    .input{ width:100%; transition: border .2s, box-shadow .2s; }
+    .input:focus{ border-color: rgba(109,124,255,.6); box-shadow: 0 0 0 4px rgba(109,124,255,.15); }
+
+    .btn{
+      cursor:pointer; border:none; font-weight:700; letter-spacing:.3px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      transition: transform .07s ease, filter .2s ease;
+      white-space:nowrap; padding:0 16px;
+    }
+    .btn:active{ transform: translateY(1px) scale(.995); }
+    .btn.ghost{
+      background: transparent; border:1px dashed var(--border); color:var(--muted);
+    }
+    .btn.danger{
+      background: transparent; border:1px solid rgba(255,104,104,.35); color:#ffd6d6;
+    }
+
+    .alert{
+      border:1px solid var(--border);
+      background:#0f1330;
+      padding:12px 14px; border-radius:12px; font-size:13px; color:#cbd0ff;
+      display:none; margin-bottom:14px;
+    }
+    .alert.show{ display:block; }
+    .alert.ok{ border-color: rgba(40,209,124,.35); color:#caffe1 }
+    .alert.err{ border-color: rgba(255,104,104,.35); color:#ffd6d6 }
+
+    .list{
+      list-style:none; padding:0; margin:8px 0 0; display:grid; gap:10px;
+    }
+    .item{
+      display:flex; align-items:center; gap:12px;
+      background:#0f1330; border:1px solid var(--border); border-radius:12px; padding:12px 14px;
+    }
+    .dot{ width:10px; height:10px; border-radius:50%; background:linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow:0 0 12px rgba(109,124,255,.4);}
+    .task{ flex:1; word-break: break-word; }
+    .empty{
+      color:var(--muted); font-size:14px; border:1px dashed var(--border);
+      padding:14px; border-radius:12px; text-align:center; margin-top:8px;
+    }
+
+    .stack{ display:grid; gap:12px }
+    .toolbar{ display:flex; align-items:center; gap:10px; justify-content:space-between; margin-top:8px}
+    .tag{ font-size:12px; color:var(--muted); padding:6px 10px; border:1px solid var(--border); border-radius:999px; }
+  </style>
 </head>
 <body>
-    <h1>Login</h1>
-    <form id="loginForm">
-        <input type="text" id="username" placeholder="Username" required>
-        <input type="password" id="password" placeholder="Password" required>
-        <button type="submit">Login</button>
-    </form>
+  <div class="app">
+    <!-- SOL: Login -->
+    <section class="card">
+      <h2 class="title">Giriş yap</h2>
+      <p class="subtitle">Prod ortam: kimlik doğrulama zorunlu. Başarılı girişte token tarayıcıda saklanır.</p>
 
-    <h1>Todo List</h1>
-    <form id="todoForm" style="display:none;">
-        <input type="text" id="task" placeholder="Enter task" required>
-        <button type="submit">Add</button>
-    </form>
-    <ul id="todoList"></ul>
+      <div id="loginAlert" class="alert"></div>
 
-    <script>
-        let token = null;
+      <div class="stack">
+        <input id="username" class="input" placeholder="Kullanıcı adı" autocomplete="username" />
+        <div class="row">
+          <input id="password" class="input" type="password" placeholder="Şifre" autocomplete="current-password" />
+          <button id="loginBtn" class="btn" style="min-width:120px">Giriş</button>
+        </div>
+        <div class="toolbar">
+          <span class="tag">JWT ile korumalı</span>
+          <button id="logoutBtn" class="btn danger">Çıkış</button>
+        </div>
+      </div>
+    </section>
 
-        async function loadTodos() {
-            const res = await fetch("/todos", {
-                headers: { "Authorization": "Bearer " + token }
-            });
-            if (!res.ok) {
-                alert("Token expired or invalid. Please login again.");
-                localStorage.removeItem("token");
-                token = null;
-                document.getElementById("todoForm").style.display = "none";
-                return;
-            }
-            const todos = await res.json();
-            document.getElementById("todoList").innerHTML =
-                todos.map(t => `<li>${t.task}</li>`).join('');
+    <!-- SAĞ: Todo -->
+    <section class="card">
+      <h2 class="title">Todo List</h2>
+      <p class="subtitle">Login sonrası ekleme ve listeleme aktif olur.</p>
+
+      <div id="todoAlert" class="alert"></div>
+
+      <div class="row" style="margin-bottom:10px">
+        <input id="task" class="input" placeholder="Yeni iş ekle..." />
+        <button id="addBtn" class="btn">Ekle</button>
+      </div>
+
+      <ul id="todoList" class="list"></ul>
+      <div id="emptyState" class="empty" style="display:none">Henüz kayıt yok. İlk işi ekle 🚀</div>
+    </section>
+  </div>
+
+  <script>
+    let token = null;
+
+    // ---- helpers ----
+    function setAlert(el, msg, type="ok"){ el.textContent = msg; el.className = `alert show ${type}`; }
+    function clearAlert(el){ el.className = "alert"; el.textContent = ""; }
+
+    function requireToken(){
+      if(!token){
+        setAlert(document.getElementById("loginAlert"), "Önce giriş yapmalısın.", "err");
+        return false;
         }
+      return true;
+    }
 
-        // login işlemi
-        document.getElementById("loginForm").addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const username = document.getElementById("username").value;
-            const password = document.getElementById("password").value;
+    async function api(path, opts={}){
+      const headers = Object.assign({"Content-Type":"application/json"}, opts.headers || {});
+      if(token) headers["Authorization"] = "Bearer " + token;
+      const res = await fetch(path, Object.assign({}, opts, { headers }));
+      if(res.status === 401){
+        // token geçmiş/geçersiz
+        token = null; localStorage.removeItem("token");
+        setAlert(document.getElementById("loginAlert"), "Oturum geçersiz. Lütfen tekrar giriş yap.", "err");
+        throw new Error("unauthorized");
+      }
+      return res;
+    }
 
-            const res = await fetch("/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, password })
-            });
+    // ---- UI actions ----
+    async function login(){
+      clearAlert(document.getElementById("loginAlert"));
+      const btn = document.getElementById("loginBtn");
+      btn.disabled = true; btn.textContent = "Giriş yapılıyor...";
 
-            if (res.ok) {
-                const data = await res.json();
-                token = data.access_token;
-                localStorage.setItem("token", token);
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value;
 
-                document.getElementById("todoForm").style.display = "block";
-                loadTodos();
-            } else {
-                alert("Login failed!");
-            }
+      try{
+        const res = await fetch("/login", {
+          method: "POST",
+          headers: { "Content-Type":"application/json" },
+          body: JSON.stringify({ username, password })
         });
+        if(!res.ok){
+          setAlert(document.getElementById("loginAlert"), "Hatalı kullanıcı adı veya şifre.", "err");
+          return;
+        }
+        const data = await res.json();
+        token = data.access_token;
+        localStorage.setItem("token", token);
+        setAlert(document.getElementById("loginAlert"), "Giriş başarılı.", "ok");
+        await loadTodos(true);
+      } catch(e){
+        setAlert(document.getElementById("loginAlert"), "Sunucuya ulaşılamadı.", "err");
+      } finally{
+        btn.disabled = false; btn.textContent = "Giriş";
+      }
+    }
 
-        // todo ekleme
-        document.getElementById("todoForm").addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const task = document.getElementById("task").value;
-            await fetch("/todos", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer " + token
-                },
-                body: JSON.stringify({ task })
-            });
-            document.getElementById("task").value = "";
-            loadTodos();
+    async function addTodo(){
+      if(!requireToken()) return;
+      clearAlert(document.getElementById("todoAlert"));
+      const btn = document.getElementById("addBtn");
+      btn.disabled = true; btn.textContent = "Ekleniyor...";
+
+      const task = document.getElementById("task").value.trim();
+      if(!task){
+        setAlert(document.getElementById("todoAlert"), "Boş görev eklenemez.", "err");
+        btn.disabled = false; btn.textContent = "Ekle";
+        return;
+      }
+      try{
+        const res = await api("/todos", {
+          method: "POST",
+          body: JSON.stringify({ task })
         });
+        if(!res.ok){
+          setAlert(document.getElementById("todoAlert"), "Ekleme başarısız.", "err");
+          return;
+        }
+        document.getElementById("task").value = "";
+        await loadTodos();
+        setAlert(document.getElementById("todoAlert"), "Eklendi.", "ok");
+      } catch(e){
+        // api helper 401'de mesaj basıyor
+      } finally{
+        btn.disabled = false; btn.textContent = "Ekle";
+      }
+    }
 
-        // sayfa açılırken token varsa tekrar kullan
-        window.onload = () => {
-            const saved = localStorage.getItem("token");
-            if (saved) {
-                token = saved;
-                document.getElementById("todoForm").style.display = "block";
-                loadTodos();
-            }
-        };
-    </script>
+    async function loadTodos(silent){
+      if(!requireToken()) return;
+      if(!silent) clearAlert(document.getElementById("todoAlert"));
+      try{
+        const res = await api("/todos");
+        const todos = await res.json();
+        const list = document.getElementById("todoList");
+        list.innerHTML = "";
+        if(!todos.length){
+          document.getElementById("emptyState").style.display = "block";
+          return;
+        }
+        document.getElementById("emptyState").style.display = "none";
+        for(const t of todos){
+          const li = document.createElement("li");
+          li.className = "item";
+          li.innerHTML = `<span class="dot"></span><span class="task">${t.task}</span>`;
+          list.appendChild(li);
+        }
+      } catch(e){
+        // unauthorized ise loginAlert set edildi
+      }
+    }
+
+    function logout(){
+      token = null; localStorage.removeItem("token");
+      clearAlert(document.getElementById("todoAlert"));
+      setAlert(document.getElementById("loginAlert"), "Çıkış yapıldı.", "ok");
+      document.getElementById("todoList").innerHTML = "";
+      document.getElementById("emptyState").style.display = "block";
+    }
+
+    // ---- wire ----
+    document.getElementById("loginBtn").addEventListener("click", login);
+    document.getElementById("addBtn").addEventListener("click", addTodo);
+    document.getElementById("logoutBtn").addEventListener("click", logout);
+
+    // sayfa açılışında token varsa kullan
+    (function init(){
+      const saved = localStorage.getItem("token");
+      if(saved){ token = saved; loadTodos(true); }
+      else{ document.getElementById("emptyState").style.display = "block"; }
+    })();
+  </script>
 </body>
 </html>
 

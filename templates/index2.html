@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Todo App</title>
+</head>
+<body>
+    <h1>Login</h1>
+    <form id="loginForm">
+        <input type="text" id="username" placeholder="Username" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <button type="submit">Login</button>
+    </form>
+
+    <h1>Todo List</h1>
+    <form id="todoForm" style="display:none;">
+        <input type="text" id="task" placeholder="Enter task" required>
+        <button type="submit">Add</button>
+    </form>
+    <ul id="todoList"></ul>
+
+    <script>
+        let token = null;
+
+        async function loadTodos() {
+            const res = await fetch("/todos", {
+                headers: { "Authorization": "Bearer " + token }
+            });
+            if (!res.ok) {
+                alert("Token expired or invalid. Please login again.");
+                localStorage.removeItem("token");
+                token = null;
+                document.getElementById("todoForm").style.display = "none";
+                return;
+            }
+            const todos = await res.json();
+            document.getElementById("todoList").innerHTML =
+                todos.map(t => `<li>${t.task}</li>`).join('');
+        }
+
+        // login işlemi
+        document.getElementById("loginForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+
+            const res = await fetch("/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                token = data.access_token;
+                localStorage.setItem("token", token);
+
+                document.getElementById("todoForm").style.display = "block";
+                loadTodos();
+            } else {
+                alert("Login failed!");
+            }
+        });
+
+        // todo ekleme
+        document.getElementById("todoForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const task = document.getElementById("task").value;
+            await fetch("/todos", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token
+                },
+                body: JSON.stringify({ task })
+            });
+            document.getElementById("task").value = "";
+            loadTodos();
+        });
+
+        // sayfa açılırken token varsa tekrar kullan
+        window.onload = () => {
+            const saved = localStorage.getItem("token");
+            if (saved) {
+                token = saved;
+                document.getElementById("todoForm").style.display = "block";
+                loadTodos();
+            }
+        };
+    </script>
+</body>
+</html>
+

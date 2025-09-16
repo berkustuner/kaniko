@@ -17,7 +17,7 @@ pipeline {
     TAG        = "build-${BUILD_NUMBER}"
 
     SECRET_NAME   = "pg_password"
-    SECRET_TARGET = "pg_password"           // container içindeki dosya adı
+    SECRET_TARGET = "pg_password"
     DB_PASS_FILE_PATH = "/run/secrets/pg_password"
   }
 
@@ -43,7 +43,6 @@ pipeline {
       steps {
         sh '''
           set -eu
-          # host path kontrolleri
           docker run --rm -v "${CONTEXT_HOST_PATH}:/x:ro" alpine ls -la /x >/dev/null
           docker run --rm -v "${HOST_DOCKER_CONFIG}:/y:ro"  alpine ls -la /y >/dev/null
 
@@ -65,18 +64,37 @@ pipeline {
         sh '''
           set -eu
 
-          # overlay ağ garanti
           docker network inspect app_net >/dev/null 2>&1 || docker network create --driver overlay app_net
 
           if docker service ls --format '{{.Name}}' | grep -w '^app_stack_web$' >/dev/null; then
-            # secret idempotency: varsa önce kaldırıp sonra ekleyeceğiz
+            # pg_password secret idempotency
             if docker service inspect app_stack_web --format '{{json .Spec.TaskTemplate.ContainerSpec.Secrets}}' | grep -q '"SecretName":"'"${SECRET_NAME}"'"'; then
               SECRET_ARGS="--secret-rm ${SECRET_TARGET} --secret-add source=${SECRET_NAME},target=${SECRET_TARGET}"
             else
               SECRET_ARGS="--secret-add source=${SECRET_NAME},target=${SECRET_TARGET}"
             fi
 
-            # TEK update çağrısı, SERVIS ADI SONDA!
+            # jwt_secret idempotency
+            if docker service inspect app_stack_web --format '{{json .Spec.TaskTemplate.ContainerSpec.Secrets}}' | grep -q '"SecretName":"jwt_secret"'; then
+              JWT_SECRET_ARGS=""
+            else
+              JWT_SECRET_ARGS="--secret-add source=jwt_secret,target=jwt_secret"
+            fi
+
+            # app_user idempotency
+            if docker service inspect app_stack_web --format '{{json .Spec.TaskTemplate.ContainerSpec.Secrets}}' | grep -q '"SecretName":"app_user"'; then
+              APP_USER_ARGS=""
+            else
+              APP_USER_ARGS="--secret-add source=app_user,target=app_user"
+            fi
+
+            # app_pass idempotency
+            if docker service inspect app_stack_web --format '{{json .Spec.TaskTemplate.ContainerSpec.Secrets}}' | grep -q '"SecretName":"app_pass"'; then
+              APP_PASS_ARGS=""
+            else
+              APP_PASS_ARGS="--secret-add source=app_pass,target=app_pass"
+            fi
+
             docker service update \
               --with-registry-auth \
               --update-order stop-first \
@@ -90,12 +108,12 @@ pipeline {
               --env-add DB_NAME=postgres \
               --env-add DB_PASS_FILE="${DB_PASS_FILE_PATH}" \
               ${SECRET_ARGS} \
-	      --secret-add source=jwt_secret,target=jwt_secret \
-	      --secret-add source=app_user,target=app_user \
-	      --secret-add source=app_pass,target=app_pass \
-	      --env-add JWT_SECRET_FILE=/run/secrets/jwt_secret \
-	      --env-add APP_USER_FILE=/run/secrets/app_user \
-	      --env-add APP_PASS_FILE=/run/secrets/app_pass \
+              ${JWT_SECRET_ARGS} \
+              ${APP_USER_ARGS} \
+              ${APP_PASS_ARGS} \
+              --env-add JWT_SECRET_FILE=/run/secrets/jwt_secret \
+              --env-add APP_USER_FILE=/run/secrets/app_user \
+              --env-add APP_PASS_FILE=/run/secrets/app_pass \
               app_stack_web
 
           else
@@ -104,12 +122,12 @@ pipeline {
               --publish mode=host,target=5000,published=5000 \
               --network app_net \
               --with-registry-auth \
-	      --env JWT_SECRET_FILE=/run/secrets/jwt_secret \
-	      --secret source=jwt_secret,target=jwt_secret \
-	      --secret source=app_user,target=app_user \
-	      --secret source=app_pass,target=app_pass \
-	      --env APP_USER_FILE=/run/secrets/app_user \
-	      --env APP_PASS_FILE=/run/secrets/app_pass \
+              --env JWT_SECRET_FILE=/run/secrets/jwt_secret \
+              --secret source=jwt_secret,target=jwt_secret \
+              --secret source=app_user,target=app_user \
+              --secret source=app_pass,target=app_pass \
+              --env APP_USER_FILE=/run/secrets/app_user \
+              --env APP_PASS_FILE=/run/secrets/app_pass \
               --env DB_HOST=db_stack_db \
               --env DB_USER=postgres \
               --env DB_NAME=postgres \
@@ -128,7 +146,6 @@ pipeline {
         set -e
         docker logout "${REGISTRY}" || true
       '''
-      // cleanWs() yerine plugin gerektirmeyen:
       deleteDir()
     }
   }
