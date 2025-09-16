@@ -54,6 +54,16 @@ def add_todo():
     db.session.commit()
     return jsonify({"id": t.id, "task": t.task}), 201
 
+@app.route("/todos/<int:todo_id>", methods=["DELETE"])
+@jwt_required()
+def delete_todo(todo_id):
+    t = Todo.query.get(todo_id)
+    if not t:
+        return jsonify({"error": "todo not found"}), 404
+    db.session.delete(t)
+    db.session.commit()
+    return jsonify({"message": f"todo {todo_id} deleted"}), 200
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
 
