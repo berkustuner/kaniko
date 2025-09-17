@@ -2,20 +2,14 @@ pipeline {
   agent any
 
   environment {
-
-    CONTEXT_HOST_PATH   = "/home/ubuntu/kaniko-example"
-    HOST_DOCKER_CONFIG  = "/home/ubuntu/.docker"
-    DOCKERFILE          = "Dockerfile"
-
+    CONTEXT_HOST_PATH  = "/home/ubuntu/kaniko-example"
+    HOST_DOCKER_CONFIG = "/home/ubuntu/.docker"
+    DOCKERFILE         = "Dockerfile"
 
     REGISTRY   = "10.10.8.13"
     IMAGE_REPO = "demo/deneme-image"
     IMAGE_NAME = "${REGISTRY}/${IMAGE_REPO}"
     TAG        = "build-${BUILD_NUMBER}"
-
-    SECRET_NAME   = "pg_password"
-    SECRET_TARGET = "pg_password"
-    DB_PASS_FILE_PATH = "/run/secrets/pg_password"
   }
 
   options { timestamps() }
@@ -39,17 +33,38 @@ pipeline {
     stage('Build & Push (Kaniko)') {
       steps {
         sh '''
-          chmod +x ci/build_push.sh
-          ./ci/build_push.sh
+          set -eu
+          # host path kontrolleri
+          docker run --rm -v "${CONTEXT_HOST_PATH}:/x:ro" alpine ls -la /x >/dev/null
+          docker run --rm -v "${HOST_DOCKER_CONFIG}:/y:ro"  alpine ls -la /y >/dev/null
+
+          docker run --rm --network host \
+            -v "${CONTEXT_HOST_PATH}:/workspace" \
+            -v "${HOST_DOCKER_CONFIG}:/kaniko/.docker:ro" \
+            gcr.io/kaniko-project/executor:latest \
+            --dockerfile="/workspace/${DOCKERFILE}" \
+            --context=dir:///workspace \
+            --destination="${IMAGE_NAME}:${TAG}" \
+            --insecure --insecure-pull --skip-tls-verify
         '''
+        echo "Pushed: ${IMAGE_NAME}:${TAG}"
       }
     }
 
-    stage('Deploy to Swarm') {
+    stage('Deploy to Swarm (Update Only)') {
       steps {
         sh '''
-          chmod +x ci/deploy.sh
-          ./ci/deploy.sh "${IMAGE_NAME}:${TAG}"
+          set -eu
+
+          # overlay network garanti
+          docker network inspect app_net >/dev/null 2>&1 || docker network create --driver overlay app_net
+
+          docker service update \
+            --with-registry-auth \
+            --update-order stop-first \
+            --update-parallelism 1 \
+            --image "${IMAGE_NAME}:${TAG}" \
+            app_stack_web
         '''
       }
     }
