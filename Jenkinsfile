@@ -1,50 +1,84 @@
 pipeline {
-  agent {
-    docker {
-      image 'gcr.io/kaniko-project/executor:latest'
-      args  '-v /home/ubuntu/kaniko-example:/workspace -v /home/ubuntu/.docker:/kaniko/.docker:ro'
-    }
-  }
+  agent any
 
   environment {
-    REGISTRY   = "10.10.8.13"
-    IMAGE_REPO = "demo/deneme-image"
-    IMAGE_NAME = "${REGISTRY}/${IMAGE_REPO}"
-    TAG        = "build-${BUILD_NUMBER}"
+    REGISTRY   = "10.10.8.13"                         // registry host (örnek)
+    IMAGE_REPO = "demo/deneme-image"                  // repo/path
+    IMAGE_TAG  = "build-${BUILD_NUMBER}"
+    IMAGE      = "${REGISTRY}/${IMAGE_REPO}:${IMAGE_TAG}"
+    KANIKO_DIR = "${WORKSPACE}/.kaniko"
+    KANIKO_BIN = "${KANIKO_DIR}/executor"
+    KANIKO_VERSION = "v1.12.0"                        // gerektiğinde güncelle
   }
 
   options { timestamps() }
 
   stages {
     stage('Checkout') {
-      steps { git branch: 'main', url: 'https://github.com/berkustuner/kaniko.git', credentialsId: 'git-creds' }
+      steps {
+        checkout scm
+      }
     }
 
-    stage('Build & Push (Kaniko)') {
+    stage('Prepare Kaniko') {
       steps {
         sh '''
-          /kaniko/executor \
-            --dockerfile=/workspace/Dockerfile \
-            --context=dir:///workspace \
-            --destination="${IMAGE_NAME}:${TAG}" \
-            --insecure --insecure-pull --skip-tls-verify
-          echo "Pushed: ${IMAGE_NAME}:${TAG}"
+          set -euo pipefail
+          mkdir -p "${KANIKO_DIR}"
+          # Kaniko static binary indiriliyor (linux/amd64). Sürümü ihtiyaç/ortama göre değiştir.
+          if [ ! -f "${KANIKO_BIN}" ]; then
+            echo "Downloading kaniko executor ${KANIKO_VERSION}..."
+            curl -fsSL -o "${KANIKO_BIN}" "https://github.com/GoogleContainerTools/kaniko/releases/download/${KANIKO_VERSION}/executor"
+            chmod +x "${KANIKO_BIN}"
+          else
+            echo "Kaniko executor already present"
+          fi
         '''
       }
     }
 
-    stage('Deploy to Swarm (Update Only)') {
+    stage('Create Docker config for Kaniko') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'REG_USER', passwordVariable: 'REG_PASS')]) {
+          sh '''
+            set -euo pipefail
+            # kaniko default olarak /kaniko/.docker/config.json veya --docker-config ile verilen dizini kullanır.
+            DOCKER_CONFIG_DIR="${KANIKO_DIR}/config"
+            mkdir -p "${DOCKER_CONFIG_DIR}"
+            AUTH="$(printf '%s:%s' "$REG_USER" "$REG_PASS" | base64 -w0)"
+            cat > "${DOCKER_CONFIG_DIR}/config.json" <<EOF
+{
+  "auths": {
+    "${REGISTRY}": {
+      "auth": "${AUTH}"
+    }
+  }
+}
+EOF
+            echo "Wrote docker config to ${DOCKER_CONFIG_DIR}/config.json"
+          '''
+        }
+      }
+    }
+
+    stage('Build & Push with Kaniko') {
       steps {
         sh '''
-          set -eu
-          docker network inspect app_net >/dev/null 2>&1 || docker network create --driver overlay app_net
-
-          docker service update \
-            --with-registry-auth \
-            --update-order stop-first \
-            --update-parallelism 1 \
-            --image "${IMAGE_NAME}:${TAG}" \
-            app_stack_web
+          set -euo pipefail
+          # Kaniko expects context like dir://<path>
+          CONTEXT="dir://${WORKSPACE}"
+          DOCKERFILE="${WORKSPACE}/Dockerfile"
+          DOCKER_CONFIG_DIR="${KANIKO_DIR}/config"
+          # Örnek ek argümanlar: --single-snapshot ile snapshot stratejisi, --verbosity info ayarı vb.
+          "${KANIKO_BIN}" \
+            --context="${CONTEXT}" \
+            --dockerfile="${DOCKERFILE}" \
+            --destination="${IMAGE}" \
+            --oci-layout-path="${KANIKO_DIR}/oci-layout" \
+            --cache=true \
+            --cache-dir="${KANIKO_DIR}/cache" \
+            --verbosity=info \
+            --docker-config="${DOCKER_CONFIG_DIR}"
         '''
       }
     }
@@ -52,7 +86,7 @@ pipeline {
 
   post {
     always {
-      deleteDir()
+      cleanWs()
     }
   }
 }
