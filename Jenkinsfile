@@ -17,7 +17,7 @@ pipeline {
 
   stages {
     stage('Checkout') {
-      steps { checkout scm }
+      steps { git branch: 'main', url: 'git@github.com:berkustuner/kaniko.git', credentialsId: 'git-creds' }
     }
 
     stage('Build & Push (Kaniko)') {
