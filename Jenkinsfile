@@ -2,13 +2,13 @@ pipeline {
   agent any
 
   environment {
-    REGISTRY   = "10.10.8.13"                         // registry host (örnek)
-    IMAGE_REPO = "demo/deneme-image"                  // repo/path
+    REGISTRY   = "10.10.8.13"
+    IMAGE_REPO = "demo/deneme-image"
     IMAGE_TAG  = "build-${BUILD_NUMBER}"
     IMAGE      = "${REGISTRY}/${IMAGE_REPO}:${IMAGE_TAG}"
     KANIKO_DIR = "${WORKSPACE}/.kaniko"
     KANIKO_BIN = "${KANIKO_DIR}/executor"
-    KANIKO_VERSION = "v1.12.0"                        // gerektiğinde güncelle
+    KANIKO_VERSION = "v1.12.0"
   }
 
   options { timestamps() }
@@ -22,10 +22,9 @@ pipeline {
 
     stage('Prepare Kaniko') {
       steps {
-        sh '''
+        sh '''#!/bin/bash
           set -euo pipefail
           mkdir -p "${KANIKO_DIR}"
-          # Kaniko static binary indiriliyor (linux/amd64). Sürümü ihtiyaç/ortama göre değiştir.
           if [ ! -f "${KANIKO_BIN}" ]; then
             echo "Downloading kaniko executor ${KANIKO_VERSION}..."
             curl -fsSL -o "${KANIKO_BIN}" "https://github.com/GoogleContainerTools/kaniko/releases/download/${KANIKO_VERSION}/executor"
@@ -40,9 +39,8 @@ pipeline {
     stage('Create Docker config for Kaniko') {
       steps {
         withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'REG_USER', passwordVariable: 'REG_PASS')]) {
-          sh '''
+          sh '''#!/bin/bash
             set -euo pipefail
-            # kaniko default olarak /kaniko/.docker/config.json veya --docker-config ile verilen dizini kullanır.
             DOCKER_CONFIG_DIR="${KANIKO_DIR}/config"
             mkdir -p "${DOCKER_CONFIG_DIR}"
             AUTH="$(printf '%s:%s' "$REG_USER" "$REG_PASS" | base64 -w0)"
@@ -63,18 +61,16 @@ EOF
 
     stage('Build & Push with Kaniko') {
       steps {
-        sh '''
+        sh '''#!/bin/bash
           set -euo pipefail
-          # Kaniko expects context like dir://<path>
           CONTEXT="dir://${WORKSPACE}"
           DOCKERFILE="${WORKSPACE}/Dockerfile"
           DOCKER_CONFIG_DIR="${KANIKO_DIR}/config"
-          # Örnek ek argümanlar: --single-snapshot ile snapshot stratejisi, --verbosity info ayarı vb.
+
           "${KANIKO_BIN}" \
             --context="${CONTEXT}" \
             --dockerfile="${DOCKERFILE}" \
             --destination="${IMAGE}" \
-            --oci-layout-path="${KANIKO_DIR}/oci-layout" \
             --cache=true \
             --cache-dir="${KANIKO_DIR}/cache" \
             --verbosity=info \
