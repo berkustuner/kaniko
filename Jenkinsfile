@@ -43,9 +43,16 @@ pipeline {
                   '--context=dir:///workspace ' +
                   '--dockerfile=\\"${DOCKERFILE}\\" ' +
                   '--destination=\\"${IMAGE}\\" ' +
+		  '--destination=\\"${REGISTRY}/${IMAGE_REPO}:latest\\" ' +
+		  // digest bilgisini dosyaya bırak:
+                  '--image-name-with-digest-file=/workspace/image_ref.txt ' +
+		  
                   '--cache=true --verbosity=info --skip-tls-verify"',
           label: 'kaniko build & push'
         )
+	
+	// Kaniko'nun bıraktığı image + digest referansını logla (artifakt istersen archiveArtifacts ekleyebiliriz)
+        sh 'bash -lc "set -e; cat /home/ubuntu/kaniko-example/image_ref.txt || true"'
       }
     }
   }
@@ -55,5 +62,42 @@ pipeline {
       cleanWs(deleteDirs: true, notFailBuild: true)
     }
   }
+    stage('Deploy (Docker Swarm)') {
+      environment {
+        SERVICE_NAME = "app_stack_web" // <- kendi servis adını yaz
+        IMAGE_TAGGED = "10.10.8.13/demo/deneme-image:build-${BUILD_NUMBER}"
+  }
+      steps {
+        sh(
+          script: '''
+    bash -lc 'set -euo pipefail;
+
+      echo "Rolling update başlıyor: ${SERVICE_NAME} -> ${IMAGE_TAGGED}"
+
+      # Servisi yeni imaj ile güncelle
+      docker service update --with-registry-auth --image "${IMAGE_TAGGED}" "${SERVICE_NAME}"
+
+      # Basit rollout kontrolü: Tüm task'lar running olana kadar bekle
+      for i in $(seq 1 60); do
+        RUNNING=$(docker service ps --format "{{.DesiredState}} {{.CurrentState}}" "${SERVICE_NAME}" | grep -c "^Running")
+      TOTAL=$(docker service ps --format "{{.ID}}" "${SERVICE_NAME}" | wc -l)
+      if [ "$RUNNING" -eq "$TOTAL" ] && [ "$TOTAL" -gt 0 ]; then
+      echo "✅ Rollout tamam: ${RUNNING}/${TOTAL}"
+      exit 0
+    fi
+    echo "Bekleniyor ($i/60): ${RUNNING}/${TOTAL} task running..."
+    sleep 2
+  done
+
+  echo "❌ Rollout timeout oldu."
+  docker service ps "${SERVICE_NAME}"
+  exit 1
+'
+''',
+      label: 'swarm rollout'
+    )
+  }
+}
+ 
 }
 
