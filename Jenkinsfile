@@ -2,10 +2,11 @@ pipeline {
   agent any
 
   environment {
-    REGISTRY        = "10.10.8.13"
-    KANIKO_DIR      = "${WORKSPACE}/.kaniko"
-    KANIKO_BIN      = "${KANIKO_DIR}/executor"
-    KANIKO_VERSION  = "v1.12.0"
+    REGISTRY   = "10.10.8.13"
+    IMAGE_REPO = "demo/deneme-image"
+    IMAGE_TAG  = "build-${BUILD_NUMBER}"
+    IMAGE      = "${REGISTRY}/${IMAGE_REPO}:${IMAGE_TAG}"
+    KANIKO_IMG = "gcr.io/kaniko-project/executor:v1.24.0-debug" // güncel ve debug imaj
   }
 
   options { timestamps() }
@@ -15,42 +16,43 @@ pipeline {
       steps { checkout scm }
     }
 
-    stage('Prepare Kaniko') {
+    // (opsiyonel) Docker'ı gerçekten kullanabiliyor muyuz?
+    stage('Sanity: docker run check') {
       steps {
-        sh '''bash -c "
+        sh '''bash -c '
           set -euo pipefail
-          mkdir -p \\"${KANIKO_DIR}\\"
-          if [ ! -f \\"${KANIKO_BIN}\\" ]; then
-            echo \\"Downloading Kaniko executor ${KANIKO_VERSION}...\\"
-            curl -fsSL -o \\"${KANIKO_BIN}\\" \\"https://github.com/GoogleContainerTools/kaniko/releases/download/${KANIKO_VERSION}/executor_linux_amd64\\"
-            chmod +x \\"${KANIKO_BIN}\\"
-          else
-            echo \\"Kaniko executor already present\\"
-          fi
-        "'''
+          docker run --rm busybox:latest echo docker_ok
+        ''''
       }
     }
 
-    stage('Test Docker Config') {
+    stage('Build & Push with Kaniko (container)') {
       steps {
         withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'REG_USER', passwordVariable: 'REG_PASS')]) {
-          sh '''bash -c "
+          sh '''bash -c '
             set -euo pipefail
-            DOCKER_CONFIG_DIR=\\"${KANIKO_DIR}/config\\"
-            mkdir -p \\"${DOCKER_CONFIG_DIR}\\"
-            AUTH=$(printf '%s:%s' \\"$REG_USER\\" \\"$REG_PASS\\" | base64 | tr -d '\\n')
-            cat > \\"${DOCKER_CONFIG_DIR}/config.json\\" <<EOF
-{
-  \\"auths\\": {
-    \\"${REGISTRY}\\": {
-      \\"auth\\": \\"${AUTH}\\"
-    }
-  }
-}
-EOF
-            echo \\"✅ Docker config created at ${DOCKER_CONFIG_DIR}/config.json\\"
-            echo \\"hello kaniko\\"
-          "'''
+            docker run --rm \
+              -v "${WORKSPACE}:/workspace" \
+              -e REGISTRY="${REGISTRY}" \
+              -e IMAGE="${IMAGE}" \
+              -e REG_USER="$REG_USER" \
+              -e REG_PASS="$REG_PASS" \
+              "${KANIKO_IMG}" /busybox/sh -c "
+                set -e
+                mkdir -p /kaniko/.docker
+                AUTH=\\$(printf \\"%s:%s\\" \\"$REG_USER\\" \\"$REG_PASS\\" | base64 | tr -d '\\n')
+                cat > /kaniko/.docker/config.json <<JSON
+{ \\"auths\\": { \\"$REGISTRY\\": { \\"auth\\": \\"$AUTH\\" } } }
+JSON
+                /kaniko/executor \
+                  --context=dir:///workspace \
+                  --dockerfile=/workspace/Dockerfile \
+                  --destination=\\"$IMAGE\\" \
+                  --cache=true \
+                  --verbosity=info \
+                  --skip-tls-verify
+              "
+          ''''
         }
       }
     }
