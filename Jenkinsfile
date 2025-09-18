@@ -26,37 +26,32 @@ pipeline {
       steps {
         withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'REG_USER', passwordVariable: 'REG_PASS')]) {
           script {
-            // 1) Docker config dizinini oluştur
+            // 1) Docker config dizini
             def dockerConfigDir = "${env.WORKSPACE}/.kaniko-docker"
-            sh "bash -lc 'set -euo pipefail; mkdir -p \"${dockerConfigDir}\"'"
+            sh 'bash -lc "set -euo pipefail; mkdir -p \\"' + dockerConfigDir + '\\""'
 
-            // 2) AUTH değerini Groovy’de base64’le (quote sorunu yok)
+            // 2) AUTH (Groovy tarafında base64)
             def auth = java.util.Base64.getEncoder()
               .encodeToString("${env.REG_USER}:${env.REG_PASS}".getBytes("UTF-8"))
 
-            // 3) config.json’ı dosyaya yaz
+            // 3) config.json yaz
             def cfg = """{
-  "auths": {
-    "${env.REGISTRY}": { "auth": "${auth}" }
-  }
+  "auths": { "${env.REGISTRY}": { "auth": "${auth}" } }
 }"""
             writeFile file: "${dockerConfigDir}/config.json", text: cfg
           }
 
-          // 4) Kaniko ile build & push (host network + hazır docker config mount)
+          // 4) Kaniko build & push (DIKKAT: /kaniko/executor YOK!)
           sh(
-            script: '''
-bash -lc 'set -euo pipefail;
-  docker run --rm --network host \
-    -v "${WORKSPACE}:/workspace" \
-    -v "${WORKSPACE}/.kaniko-docker:/kaniko/.docker" \
-    ${KANIKO_IMG} /kaniko/executor \
-      --context=dir:///workspace \
-      --dockerfile=/workspace/Dockerfile \
-      --destination="${IMAGE}" \
-      --cache=true --verbosity=info --skip-tls-verify
-'
-''',
+            script: 'bash -lc "set -euo pipefail; ' +
+                    'docker run --rm --network host ' +
+                    '-v \\"${WORKSPACE}:/workspace\\" ' +
+                    '-v \\"${WORKSPACE}/.kaniko-docker:/kaniko/.docker\\" ' +
+                    '${KANIKO_IMG} ' + // ENTRYPOINT already /kaniko/executor
+                    '--context=dir:///workspace ' +
+                    '--dockerfile=/workspace/Dockerfile ' +
+                    '--destination=\\"${IMAGE}\\" ' +
+                    '--cache=true --verbosity=info --skip-tls-verify"',
             label: 'kaniko build & push'
           )
         }
