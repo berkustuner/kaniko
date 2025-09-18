@@ -18,6 +18,7 @@ pipeline {
     stage('Prepare Kaniko') {
       steps {
         sh '''
+	  #!/bin/bash
           set -euo pipefail
           mkdir -p "${KANIKO_DIR}"
           if [ ! -f "${KANIKO_BIN}" ]; then
@@ -35,6 +36,7 @@ pipeline {
       steps {
         withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'REG_USER', passwordVariable: 'REG_PASS')]) {
           sh '''
+   	    #!/bin/bash
             set -euo pipefail
             DOCKER_CONFIG_DIR="${KANIKO_DIR}/config"
             mkdir -p "${DOCKER_CONFIG_DIR}"
