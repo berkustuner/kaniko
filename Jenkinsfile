@@ -22,7 +22,7 @@ pipeline {
           mkdir -p \\"${KANIKO_DIR}\\"
           if [ ! -f \\"${KANIKO_BIN}\\" ]; then
             echo \\"Downloading Kaniko executor ${KANIKO_VERSION}...\\"
-            curl -fsSL -o \\"${KANIKO_BIN}\\" \\"https://github.com/GoogleContainerTools/kaniko/releases/download/${KANIKO_VERSION}/executor\\"
+            curl -fsSL -o \\"${KANIKO_BIN}\\" \\"https://github.com/GoogleContainerTools/kaniko/releases/download/${KANIKO_VERSION}/executor_linux_amd64\\"
             chmod +x \\"${KANIKO_BIN}\\"
           else
             echo \\"Kaniko executor already present\\"
