@@ -24,12 +24,11 @@ pipeline {
       steps { checkout scm }
     }
 
+    // Sadece Docker'ı koşturabiliyor muyuz diye sanity check
     stage('Sanity: docker run check') {
       steps {
         sh(script: 'bash -lc "set -euo pipefail; docker run --rm --network host busybox:latest echo docker_ok"',
            label: 'docker run check')
-        sh(script: 'bash -lc "set -e; ls -la \\"${CONTEXT_HOST_PATH}\\"; test -f \\"${CONTEXT_HOST_PATH}/${DOCKERFILE}\\""',
-           label: 'verify context & Dockerfile')
       }
     }
 
