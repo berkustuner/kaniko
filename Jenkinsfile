@@ -16,52 +16,39 @@ pipeline {
       steps { checkout scm }
     }
 
-    // Hostun container ağı kısıtlıysa bridge fail olur; host network ile deneriz.
     stage('Sanity: docker run check') {
       steps {
-        sh '''bash -lc 'set -euo pipefail; docker run --rm --network host busybox:latest echo docker_ok''''
+        sh(script: 'bash -lc "set -euo pipefail; docker run --rm --network host busybox:latest echo docker_ok"', label: 'docker run check')
       }
     }
 
     stage('Build & Push with Kaniko') {
       steps {
         withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'REG_USER', passwordVariable: 'REG_PASS')]) {
-          sh '''bash -lc "
-            set -euo pipefail
 
-            # Container içinde çalışacak scripti workspace'e yazıyoruz
-            cat > ${WORKSPACE}/kaniko-run.sh <<'EOS'
-#!/busybox/sh
-set -e
+          // 1) Harbor auth dosyasını hostta oluştur (sonra /kaniko/.docker olarak mount edeceğiz)
+          sh(
+            script: 'bash -lc "set -euo pipefail; ' +
+                    'DOCKER_CONFIG_DIR=\\"${WORKSPACE}/.kaniko-docker\\"; ' +
+                    'mkdir -p \\"$DOCKER_CONFIG_DIR\\"; ' +
+                    'AUTH=$(printf \\"%s:%s\\" \\"$REG_USER\\" \\"$REG_PASS\\" | base64 | tr -d \\"\\\\n\\"); ' +
+                    'printf \\"{\\\\\\"auths\\\\\\":{\\\\\\"%s\\\\\\":{\\\\\\"auth\\\\\\":\\\\\\"%s\\\\\\"}}}\\" \\"${REGISTRY}\\" \\"$AUTH\\" > \\"$DOCKER_CONFIG_DIR/config.json\\""',
+            label: 'write docker config'
+          )
 
-# Harbor auth config
-mkdir -p /kaniko/.docker
-AUTH=$(printf '%s:%s' \"$REG_USER\" \"$REG_PASS\" | base64 | tr -d '\\n')
-cat > /kaniko/.docker/config.json <<JSON
-{ \"auths\": { \"$REGISTRY\": { \"auth\": \"$AUTH\" } } }
-JSON
-
-# Build & push
-/kaniko/executor \
-  --context=dir:///workspace \
-  --dockerfile=/workspace/Dockerfile \
-  --destination=\"$IMAGE\" \
-  --cache=true \
-  --verbosity=info \
-  --skip-tls-verify
-EOS
-
-            chmod +x ${WORKSPACE}/kaniko-run.sh
-
-            # Kaniko'yu host network ile koştur
-            docker run --rm --network host \
-              -v \"${WORKSPACE}:/workspace\" \
-              -e REGISTRY=\"${REGISTRY}\" \
-              -e IMAGE=\"${IMAGE}\" \
-              -e REG_USER=\"${REG_USER}\" \
-              -e REG_PASS=\"${REG_PASS}\" \
-              ${KANIKO_IMG} /busybox/sh /workspace/kaniko-run.sh
-          "'''
+          // 2) Kaniko container ile build & push
+          sh(
+            script: 'bash -lc "set -euo pipefail; ' +
+                    'docker run --rm --network host ' +
+                    '-v \\"${WORKSPACE}:/workspace\\" ' +
+                    '-v \\"${WORKSPACE}/.kaniko-docker:/kaniko/.docker\\" ' +
+                    '${KANIKO_IMG} /kaniko/executor ' +
+                    '--context=dir:///workspace ' +
+                    '--dockerfile=/workspace/Dockerfile ' +
+                    '--destination=\\"${IMAGE}\\" ' +
+                    '--cache=true --verbosity=info --skip-tls-verify"',
+            label: 'kaniko build & push'
+          )
         }
       }
     }
