@@ -16,10 +16,10 @@ pipeline {
       steps { checkout scm }
     }
 
-    // (Opsiyonel) Docker erişimi var mı?
+    // Hostun container ağı kısıtlıysa bridge fail olur; host network ile deneriz.
     stage('Sanity: docker run check') {
       steps {
-        sh '''bash -lc "set -euo pipefail; docker run --rm busybox:latest echo docker_ok"'''
+        sh '''bash -lc 'set -euo pipefail; docker run --rm --network host busybox:latest echo docker_ok''''
       }
     }
 
@@ -29,12 +29,12 @@ pipeline {
           sh '''bash -lc "
             set -euo pipefail
 
-            # Container içinde çalışacak scripti workspace'e yaz
+            # Container içinde çalışacak scripti workspace'e yazıyoruz
             cat > ${WORKSPACE}/kaniko-run.sh <<'EOS'
 #!/busybox/sh
 set -e
 
-# Docker config (Harbor login)
+# Harbor auth config
 mkdir -p /kaniko/.docker
 AUTH=$(printf '%s:%s' \"$REG_USER\" \"$REG_PASS\" | base64 | tr -d '\\n')
 cat > /kaniko/.docker/config.json <<JSON
@@ -53,8 +53,8 @@ EOS
 
             chmod +x ${WORKSPACE}/kaniko-run.sh
 
-            # Kaniko container'ını koştur
-            docker run --rm \
+            # Kaniko'yu host network ile koştur
+            docker run --rm --network host \
               -v \"${WORKSPACE}:/workspace\" \
               -e REGISTRY=\"${REGISTRY}\" \
               -e IMAGE=\"${IMAGE}\" \
