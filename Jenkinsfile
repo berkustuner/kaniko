@@ -56,6 +56,8 @@ pipeline {
           bash -lc 'set -euo pipefail;
 
           echo "Rolling update başlıyor: ${SERVICE_NAME} -> ${IMAGE_TAGGED}"
+	  
+	  docker service update --update-order stop-first --update-parallelism 1 "${SERVICE_NAME}"          
 
           docker service update --with-registry-auth --image "${IMAGE_TAGGED}" "${SERVICE_NAME}"
 
