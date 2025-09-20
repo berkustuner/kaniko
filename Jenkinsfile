@@ -7,7 +7,7 @@ pipeline {
     IMAGE      = "${REGISTRY}/${IMAGE_REPO}:${IMAGE_TAG}"
     IMAGE_LATEST = "${REGISTRY}/${IMAGE_REPO}:latest"
 
-    CONTEXT_HOST_PATH  = "/home/ubuntu/kaniko-example"
+    CONTEXT_HOST_PATH  = "${WORKSPACE}"
     HOST_DOCKER_CONFIG = "/home/ubuntu/.docker"
 
     SERVICE_NAME = "app_stack_web"
