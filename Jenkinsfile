@@ -39,7 +39,7 @@ pipeline {
               -v \\"${CONTEXT_HOST_PATH}:/workspace\\" \
               -v \\"${HOST_DOCKER_CONFIG}:/kaniko/.docker:ro\\" \
               \\"${KANIKO_IMG}\\" \
-                --context=/workspace \
+                --context=/workspace/ \
                 --dockerfile=Dockerfile \
                 --destination=\\"${IMAGE}\\" \
                 --destination=\\"${IMAGE_LATEST}\\" \
