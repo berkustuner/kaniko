@@ -8,7 +8,7 @@ pipeline {
     IMAGE         = "${REGISTRY}/${IMAGE_REPO}:${IMAGE_TAG}"
     IMAGE_LATEST  = "${REGISTRY}/${IMAGE_REPO}:latest"
 
-    CONTEXT_HOST_PATH  = "/home/ubuntu/kaniko-example"   // artık checkout edilen repo
+    CONTEXT_HOST_PATH  = "${WORKSPACE}"   // artık checkout edilen repo
     HOST_DOCKER_CONFIG = "/home/ubuntu/.docker"
     DOCKERFILE = "Dockerfile"
 
@@ -41,7 +41,7 @@ pipeline {
               -v "${HOST_DOCKER_CONFIG}:/kaniko/.docker:ro" \
               "${KANIKO_IMG}" \
 		--context=dir:///workspace \
-                --dockerfile="${WORKSPACE}/${DOCKERFILE}" \
+                --dockerfile="/workspace/Dockerfile" \
                 --destination="${IMAGE}" \
                 --destination="${IMAGE_LATEST}" \
                 --cache=true --verbosity=info --skip-tls-verify
