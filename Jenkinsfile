@@ -23,7 +23,13 @@ pipeline {
     }
 
     stage('Verify context & Dockerfile') {
-      steps { sh 'set -e; ls -la "$CONTEXT_HOST_PATH"; test -f "$CONTEXT_HOST_PATH/Dockerfile"' }
+      steps {
+    sh '''
+      set -e
+      ls -la "${CONTEXT_HOST_PATH}"
+      test -f "${CONTEXT_HOST_PATH}/Dockerfile"
+    '''
+  }
     }
 
     stage('Build & Push with Kaniko') {
