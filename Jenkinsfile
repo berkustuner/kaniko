@@ -26,7 +26,7 @@ pipeline {
 
     stage('Verify context & Dockerfile') {
       steps {
-        sh 'bash -lc "set -e; ls -la \\"${CONTEXT_HOST_PATH}\\"; test -f \\"${CONTEXT_HOST_PATH}/Dockerfile\\""'
+        sh 'bash -lc "set -e; ls -la "${CONTEXT_HOST_PATH}"; echo "${WORKSPACE}"; test -f "${CONTEXT_HOST_PATH}/Dockerfile""'
       }
     }
 
