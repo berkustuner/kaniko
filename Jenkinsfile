@@ -1,18 +1,20 @@
 pipeline {
   agent any
-  environment {
-    REGISTRY   = "10.10.8.13"
-    IMAGE_REPO = "demo/deneme-image"
-    IMAGE_TAG  = "build-${BUILD_NUMBER}"
-    IMAGE      = "${REGISTRY}/${IMAGE_REPO}:${IMAGE_TAG}"
-    IMAGE_LATEST = "${REGISTRY}/${IMAGE_REPO}:latest"
 
-    CONTEXT_HOST_PATH  = "${WORKSPACE}"
+  environment {
+    REGISTRY      = "10.10.8.13"
+    IMAGE_REPO    = "demo/deneme-image"
+    IMAGE_TAG     = "build-${BUILD_NUMBER}"
+    IMAGE         = "${REGISTRY}/${IMAGE_REPO}:${IMAGE_TAG}"
+    IMAGE_LATEST  = "${REGISTRY}/${IMAGE_REPO}:latest"
+
+    CONTEXT_HOST_PATH  = "${WORKSPACE}"   // artık checkout edilen repo
     HOST_DOCKER_CONFIG = "/home/ubuntu/.docker"
 
     SERVICE_NAME = "app_stack_web"
-    KANIKO_IMG = "gcr.io/kaniko-project/executor:v1.24.0-debug"
+    KANIKO_IMG   = "gcr.io/kaniko-project/executor:v1.24.0-debug"
   }
+
   options { timestamps() }
 
   stages {
@@ -24,27 +26,25 @@ pipeline {
 
     stage('Verify context & Dockerfile') {
       steps {
-    sh '''
-      set -e
-      ls -la "${CONTEXT_HOST_PATH}"
-      test -f "${CONTEXT_HOST_PATH}/Dockerfile"
-    '''
-  }
+        sh 'bash -lc "set -e; ls -la \\"${CONTEXT_HOST_PATH}\\"; test -f \\"${CONTEXT_HOST_PATH}/Dockerfile\\""'
+      }
     }
 
     stage('Build & Push with Kaniko') {
       steps {
         sh '''
-          set -euo pipefail
-          docker run --rm --network host \
-            -v "${CONTEXT_HOST_PATH}:/workspace" \
-            -v "${HOST_DOCKER_CONFIG}:/kaniko/.docker:ro" \
-            "${KANIKO_IMG}" \
-              --context=dir:///workspace \
-              --dockerfile=Dockerfile \
-              --destination="${IMAGE}" \
-              --destination="${IMAGE_LATEST}" \
-              --cache=true --verbosity=info --skip-tls-verify
+          bash -lc "
+            set -euo pipefail
+            docker run --rm --network host \
+              -v \\"${CONTEXT_HOST_PATH}:/workspace\\" \
+              -v \\"${HOST_DOCKER_CONFIG}:/kaniko/.docker:ro\\" \
+              \\"${KANIKO_IMG}\\" \
+                --context=dir:///workspace \
+                --dockerfile=Dockerfile \
+                --destination=\\"${IMAGE}\\" \
+                --destination=\\"${IMAGE_LATEST}\\" \
+                --cache=true --verbosity=info --skip-tls-verify
+          "
         '''
       }
     }
@@ -52,21 +52,25 @@ pipeline {
     stage('Rolling Update (image only)') {
       steps {
         sh '''
-          set -euo pipefail
-          docker service update \
-            --with-registry-auth \
-            --update-order stop-first \
-            --update-parallelism 1 \
-            --update-delay 5s \
-            --image "${IMAGE}" \
-            "${SERVICE_NAME}"
+          bash -lc "
+            set -euo pipefail
+            docker service update \
+              --with-registry-auth \
+              --update-order stop-first \
+              --update-parallelism 1 \
+              --update-delay 5s \
+              --image \\"${IMAGE}\\" \
+              \\"${SERVICE_NAME}\\"
+          "
         '''
       }
     }
   }
 
   post {
-    always { cleanWs(deleteDirs: true, notFailBuild: true) }
+    always {
+      cleanWs(deleteDirs: true, notFailBuild: true)
+    }
   }
 }
 
