@@ -37,10 +37,7 @@ pipeline {
           bash -lc "
             set -euo pipefail
 
-	    docker run --rm -v "${CONTEXT_HOST_PATH}:/x:ro" alpine ls -la /x >/dev/null
-            docker run --rm -v "${HOST_DOCKER_CONFIG}:/y:ro"  alpine ls -la /y >/dev/null
-
-
+	    
             docker run --rm --network host \
               -v "${CONTEXT_HOST_PATH}:/workspace" \
               -v "${HOST_DOCKER_CONFIG}:/kaniko/.docker:ro" \
