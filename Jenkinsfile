@@ -8,7 +8,7 @@ pipeline {
     IMAGE         = "${REGISTRY}/${IMAGE_REPO}:${IMAGE_TAG}"
     IMAGE_LATEST  = "${REGISTRY}/${IMAGE_REPO}:latest"
 
-    CONTEXT_HOST_PATH  = "${WORKSPACE}"   // artık checkout edilen repo
+    CONTEXT_HOST_PATH  = "/home/ubuntu/kaniko-example"   // artık checkout edilen repo
     HOST_DOCKER_CONFIG = "/home/ubuntu/.docker"
     DOCKERFILE = "Dockerfile"
 
@@ -36,12 +36,17 @@ pipeline {
         sh '''
           bash -lc "
             set -euo pipefail
+
+	    docker run --rm -v "${CONTEXT_HOST_PATH}:/x:ro" alpine ls -la /x >/dev/null
+            docker run --rm -v "${HOST_DOCKER_CONFIG}:/y:ro"  alpine ls -la /y >/dev/null
+
+
             docker run --rm --network host \
               -v "${CONTEXT_HOST_PATH}:/workspace" \
               -v "${HOST_DOCKER_CONFIG}:/kaniko/.docker:ro" \
               "${KANIKO_IMG}" \
 		--context=dir:///workspace \
-                --dockerfile="Dockerfile" \
+                --dockerfile="/workspace/Dockerfile" \
                 --destination="${IMAGE}" \
                 --destination="${IMAGE_LATEST}" \
                 --cache=true --verbosity=info --skip-tls-verify
